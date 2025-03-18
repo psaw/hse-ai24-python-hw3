@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Установка uv
+RUN pip install uv
+
+# Копирование файлов проекта
+COPY pyproject.toml .
+COPY src/app/ui src/app/ui/
+
+# Установка зависимостей
+RUN uv venv && . .venv/bin/activate && uv pip install -e .
+
+# Запуск Streamlit
+CMD ["streamlit", "run", "src/app/ui/main.py"] 
