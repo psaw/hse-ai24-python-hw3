@@ -207,6 +207,10 @@ logs/
 .docker/
 docker-volumes/
 
-# Alembic
-alembic/versions/*
-!alembic/versions/.gitkeep
+# SQLite database
+app.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # Import your models
-from src.app.models.base import Base
+from src.app.models import Base
 from src.app.core.database import SQLALCHEMY_DATABASE_URL
 
 # Add the project root directory to the Python path
