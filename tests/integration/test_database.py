@@ -8,6 +8,7 @@ from tests.integration.test import TestTable
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
+
 @pytest.fixture
 def engine():
     """Create a test database engine"""
@@ -16,12 +17,14 @@ def engine():
     yield engine
     Base.metadata.drop_all(engine)
 
+
 @pytest.fixture
 def db_session(engine):
     """Create a test database session"""
     with Session(engine) as session:
         yield session
         session.rollback()
+
 
 def test_create_test_table_record(db_session):
     """Test creating a record in test_table"""
@@ -37,6 +40,7 @@ def test_create_test_table_record(db_session):
     assert record is not None
     assert record.name == "test name"
     assert record.id is not None
+
 
 def test_update_test_table_record(db_session):
     """Test updating a record in test_table"""
@@ -54,6 +58,7 @@ def test_update_test_table_record(db_session):
 
     # Assertions
     assert record.name == "new name"
+
 
 def test_delete_test_table_record(db_session):
     """Test deleting a record from test_table"""
@@ -73,4 +78,4 @@ def test_delete_test_table_record(db_session):
     record = db_session.query(TestTable).filter_by(id=record_id).first()
 
     # Assertions
-    assert record is None 
+    assert record is None
