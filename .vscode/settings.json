@@ -1,0 +1,51 @@
+{
+  "python.analysis.extraPaths": ["./src"],
+  "python.pythonPath": ".venv/bin/python",
+  // "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.cwd": "${workspaceFolder}/tests",
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.analysis.autoFormatStrings": true,
+  "python.analysis.inlayHints.functionReturnTypes": false,
+  "python.analysis.packageIndexDepths": [
+    {
+      "name": "fastapi",
+      "depth": 2
+    },
+    {
+      "name": "fastapi_users",
+      "depth": 2
+    },
+    {
+      "name": "sqlalchemy",
+      "depth": 2
+    },
+    {
+      "name": "alembic",
+      "depth": 2
+    },
+    {
+      "name": "pydantic",
+      "depth": 2
+    },
+    {
+      "name": "pytest",
+      "depth": 2
+    }
+  ],
+  "python.analysis.typeCheckingMode": "off",
+  // "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.autoImportCompletions": false,
+  "python.analysis.inlayHints.variableTypes": false,
+  "ruff.enable": true,
+  "ruff.organizeImports": true,
+  "ruff.fixOnSave": true,
+  "ruff.lint.fixOnSave": true,
+
+  "editor.defaultFormatter": "charliermarsh.ruff",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSaveMode": "file",
+  "markdown-mermaid.darkModeTheme": "forest"
+}
