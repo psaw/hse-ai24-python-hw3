@@ -1,0 +1,35 @@
+services:
+  # db:
+  #   image: postgres:16
+  #   container_name: db_app
+  #   command: -p 1221
+  #   expose:
+  #     - 1221
+
+  # redis:
+  #   image: redis:7
+  #   container_name: redis_app
+  #   command: --port 6379
+  #   ports:
+  #     - 6379:6379
+  #   expose:
+  #     - 6379
+
+  app:
+    build:
+      context: .
+    stop_signal: SIGINT
+    container_name: fastapi_app
+    # command: ["/fastapi_app/docker/app.sh"]
+    ports:
+      - 9999:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:  # override env variables
+      - DB_HOST=host.docker.internal
+      - REDIS_HOST=host.docker.internal
+    env_file:
+      - .env
+    # depends_on:
+      # - db
+      # - redis
