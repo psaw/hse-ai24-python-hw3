@@ -2,7 +2,9 @@ import os
 import json
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# Load .env but do NOT override existing environment variables
+# Variables set by Docker Compose (like DB_HOST) should take precedence.
+load_dotenv()
 
 DB_USER = os.getenv("DB_USER")
 DB_PASS = os.getenv("DB_PASS")

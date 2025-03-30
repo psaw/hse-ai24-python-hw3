@@ -1,10 +1,10 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.database import get_async_session
-from services.link import LinkService
-from core.logger import logger
-from core.config import SCHEDULER_CLEANUP_INTERVAL
+from src.core.database import get_async_session
+from src.services.link import LinkService
+from src.core.logger import logger
+from src.core.config import SCHEDULER_CLEANUP_INTERVAL
 
 
 class Scheduler:
@@ -66,11 +66,13 @@ class Scheduler:
                 link_service = LinkService(session)
 
                 # Выполняем очистку
+                logger.debug(" > > Entering cleanup_expired_links")
                 deleted_count = await link_service.cleanup_expired_links()
+                logger.debug(" > > Exiting cleanup_expired_links")
 
                 logger.info(f"Cleaned up {deleted_count} expired links")
         except Exception as e:
-            logger.error(f"Error during cleanup of expired links: {e}")
+            logger.exception(f"Error during cleanup of expired links: {e}")
 
     def start(self):
         """Запуск планировщика."""

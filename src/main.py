@@ -2,16 +2,16 @@ import uvicorn
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
-from core.config import DB_INIT
-from core.logger import logger
-from core.database import create_db_and_tables
-from core.middleware import LoggingMiddleware, setup_cors_middleware
-from core.scheduler import Scheduler
-from utils.cache import cache_manager
-from auth.router import router as auth_router
-from api.v1.router import router as api_v1_router
-from api.v1.routers.redirect import router as redirect_router
-from utils.demo_data import create_demo_data
+from src.core.config import DB_INIT
+from src.core.logger import logger
+from src.core.database import create_db_and_tables
+from src.core.middleware import LoggingMiddleware, setup_cors_middleware
+from src.core.scheduler import Scheduler
+from src.utils.cache import cache_manager
+from src.auth.router import router as auth_router
+from src.api.v1.router import router as api_v1_router
+from src.api.v1.routers.redirect import router as redirect_router
+from src.utils.demo_data import create_demo_data
 import os
 
 
@@ -46,6 +46,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
     # Shutdown
+    logger.info("Flushing Redis cache before shutdown...")
+    try:
+        await (
+            cache_manager.redis.flushdb()
+        )  # Используем flushdb для полной очистки Redis
+        logger.info("Redis cache flushed successfully.")
+    except Exception as e:
+        logger.error(f"Error flushing Redis cache: {e}")
     scheduler.shutdown()
     await cache_manager.close()
 
@@ -65,7 +73,7 @@ app.include_router(api_v1_router)
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "src.main:app",
         reload=True,
         host="0.0.0.0",
         log_level="debug",

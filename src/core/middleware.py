@@ -3,8 +3,8 @@ from typing import Callable
 from fastapi import Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from core.logger import logger, request_id_var
-from core.config import CORS_ORIGINS, CORS_HEADERS, CORS_METHODS, CORS_CREDENTIALS
+from src.core.logger import logger, request_id_var
+from src.core.config import CORS_ORIGINS, CORS_HEADERS, CORS_METHODS, CORS_CREDENTIALS
 import uuid
 
 

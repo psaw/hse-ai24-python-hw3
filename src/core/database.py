@@ -2,8 +2,9 @@ from typing import AsyncGenerator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from core.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER, DB_ECHO
-from core.logger import logger
+from src.core.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER, DB_ECHO
+from src.core.logger import logger
+
 
 # базовый класс для всех моделей
 class Base(DeclarativeBase):
@@ -33,9 +34,11 @@ async def drop_all_tables():
 
 async def create_db_and_tables(drop_first=False):
     # Импорт здесь для избежания циклических зависимостей
-    import models.user
-    import models.project
-    import models.link
+    # Также исправляем импорты моделей, чтобы они работали при вызове из main.py
+    # Но лучше вынести эти импорты на уровень модуля, если они нужны всегда
+    from src.models.user import User
+    from src.models.project import Project
+    from src.models.link import Link
 
     async with engine.begin() as conn:
         try:

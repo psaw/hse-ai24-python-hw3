@@ -1,0 +1,9 @@
+-r requirements.txt
+
+# Testing dependencies
+pytest
+pytest-asyncio
+pytest-mock
+httpx
+pytest-cov
+asyncpg # уже есть в requirements.txt, добавлено для ясности

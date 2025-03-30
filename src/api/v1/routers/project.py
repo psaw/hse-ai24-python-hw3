@@ -3,10 +3,10 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.users import current_active_user
-from core.database import get_async_session
-from models.user import User
-from schemas.project import (
+from src.auth.users import current_active_user
+from src.core.database import get_async_session
+from src.models.user import User
+from src.schemas.project import (
     Project,
     ProjectCreate,
     ProjectUpdate,
@@ -14,7 +14,7 @@ from schemas.project import (
     PublicProject,
     ProjectCreateResponse,
 )
-from services.project import ProjectService
+from src.services.project import ProjectService
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 

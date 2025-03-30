@@ -1,35 +1,69 @@
+volumes:
+  postgres_prod_data:
+  redis_data:
 services:
-  # db:
-  #   image: postgres:16
-  #   container_name: db_app
-  #   command: -p 1221
-  #   expose:
-  #     - 1221
+  db:
+    image: postgres:16
+    container_name: db_app
+    environment:
+      # Эти переменные использует postgres для инициализации БД
+      POSTGRES_USER: ${DB_USER}       # Переменная из .env файла
+      POSTGRES_PASSWORD: ${DB_PASS}   # Переменная из .env файла
+      POSTGRES_DB: ${DB_NAME}         # Переменная из .env файла
+      POSTGRES_PORT: ${DB_PORT}       # Переменная из .env файла
+    ports:
+      - 5433:${DB_PORT}   # 5433 - для проверки подключения снаружи
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data/ # Для сохранения данных между запусками
+    restart: always # Рекомендуется для production
+    healthcheck: # Очень рекомендуется!
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # redis:
-  #   image: redis:7
-  #   container_name: redis_app
-  #   command: --port 6379
-  #   ports:
-  #     - 6379:6379
-  #   expose:
-  #     - 6379
+  redis:
+    image: redis:7-alpine
+    container_name: redis_app
+    restart: always
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: --requirepass ${REDIS_PASSWORD}
+    ports:
+      - 6380:6379  # 6380 - для проверки подключения снаружи
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
-    build:
-      context: .
-    stop_signal: SIGINT
+    # build: .  # это для локальной сборки из исходников (вместо image:)
+    image: cr.yandex/crp7k73mhh3ojb75h0gi/fastapi_hw3:latest
     container_name: fastapi_app
-    # command: ["/fastapi_app/docker/app.sh"]
+    stop_signal: SIGINT
+    environment:  # override .env (или env) переменные
+      # - DB_HOST=host.docker.internal
+      - DB_HOST=db # Имя сервиса БД - не хоста!
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      # - REDIS_HOST=host.docker.internal
+      - REDIS_HOST=redis # Имя сервиса
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # ... другие переменные ...
+      - LOG_LEVEL=DEBUG # установить нужный уровень для production
     ports:
-      - 9999:8000
+      - 80:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    environment:  # override env variables
-      - DB_HOST=host.docker.internal
-      - REDIS_HOST=host.docker.internal
-    env_file:
-      - .env
-    # depends_on:
-      # - db
-      # - redis
+    depends_on:
+      db:
+        condition: service_healthy # ждем, пока БД будет готова
+      redis:
+        condition: service_started # ждем, пока Redis будет готов
+    restart: always

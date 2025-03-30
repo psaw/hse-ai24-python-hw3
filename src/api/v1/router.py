@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from api.v1.routers.misc import router as misc_router
-from api.v1.routers.project import router as project_router
-from api.v1.routers.link import router as link_router
+from src.api.v1.routers.misc import router as misc_router
+from src.api.v1.routers.project import router as project_router
+from src.api.v1.routers.link import router as link_router
 
 router = APIRouter(prefix="/api/v1")
 

@@ -6,10 +6,10 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.project import Project, project_members
-from models.link import Link
-from models.user import User
-from schemas.project import ProjectCreate, ProjectUpdate, ProjectMemberCreate
+from src.models.project import Project, project_members
+from src.models.link import Link
+from src.models.user import User
+from src.schemas.project import ProjectCreate, ProjectUpdate, ProjectMemberCreate
 
 
 class ProjectService:
@@ -341,7 +341,7 @@ class ProjectService:
             return public_project
 
         # Получаем ID администратора системы (первого суперпользователя)
-        from models.user import User
+        from src.models.user import User
         from uuid import uuid4
 
         query = select(User).where(User.is_superuser == True).limit(1)

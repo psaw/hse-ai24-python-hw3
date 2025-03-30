@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from loguru import logger
-from core.config import LOG_LEVEL
+from src.core.config import LOG_LEVEL
 from contextvars import ContextVar
 
 # Контекстная переменная для Request ID

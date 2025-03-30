@@ -10,7 +10,7 @@ from sqlalchemy import (
     UUID,
 )
 from sqlalchemy.orm import relationship
-from core.database import Base
+from src.core.database import Base
 
 
 def utcnow_with_tz():

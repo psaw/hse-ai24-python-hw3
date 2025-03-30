@@ -6,14 +6,14 @@ from fastapi import Depends
 from fastapi_users.password import PasswordHelper
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.users import UserManager, get_user_manager
-from core.database import get_async_session, engine
-from models.user import User
-from schemas.link import LinkCreate
-from schemas.project import ProjectCreate
-from services.project import ProjectService
-from services.link import LinkService
-from core.logger import logger
+from src.auth.users import UserManager, get_user_manager
+from src.core.database import get_async_session, engine
+from src.models.user import User
+from src.schemas.link import LinkCreate
+from src.schemas.project import ProjectCreate
+from src.services.project import ProjectService
+from src.services.link import LinkService
+from src.core.logger import logger
 
 
 # Для совместимости с Python < 3.10
@@ -130,7 +130,7 @@ async def create_demo_data() -> bool:
         ############################################################
         #  Создаем ссылки
         ############################################################
-        
+
         # Публичная, от анонимного пользователя
         link1 = await link_service.create_link(
             data=LinkCreate(

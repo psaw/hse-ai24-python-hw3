@@ -2,9 +2,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl, field_validator
-from core.logger import logger
-
-from utils.utils import ensure_timezone
+from src.core.logger import logger
+from src.utils.utils import ensure_timezone
 
 
 class LinkPublicBase(BaseModel):
@@ -16,7 +15,6 @@ class LinkPublicBase(BaseModel):
         None,
         description="Время истечения ссылки",
     )
-
 
 
 class LinkBase(LinkPublicBase):

@@ -7,12 +7,12 @@ from fastapi import HTTPException, status
 from sqlalchemy import and_, or_, select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.utils import ensure_timezone
-from core.logger import logger
-from models.link import Link
-from models.project import Project, project_members
-from models.user import User
-from schemas.link import (
+from src.utils.utils import ensure_timezone
+from src.core.logger import logger
+from src.models.link import Link
+from src.models.project import Project, project_members
+from src.models.user import User
+from src.schemas.link import (
     LinkCreate,
     LinkUpdate,
     LinkStats,
@@ -20,7 +20,7 @@ from schemas.link import (
     LinkCacheStatic,
     LinkClickStats,
 )
-from utils.cache import cache_manager
+from src.utils.cache import cache_manager
 
 
 class LinkService:
@@ -55,7 +55,7 @@ class LinkService:
                           или кастомный алиас уже занят, или время истечения слишком мало
         """
         # Импортируем ProjectService здесь, чтобы избежать циклических зависимостей
-        from services.project import ProjectService
+        from src.services.project import ProjectService
 
         project_service = ProjectService(self.session)
         # Получаем публичный проект
@@ -170,6 +170,7 @@ class LinkService:
         Raises:
             HTTPException: Если ссылка не найдена или истекла
         """
+        link = None  # Initialize link to None
 
         CAN_READ, CAN_MODIFY = await self._check_link_permissions(
             short_code, user.id if user else None
@@ -668,7 +669,7 @@ class LinkService:
         )
         result = await self.session.execute(query)
         expired_links = result.scalars().all()
-
+        logger.debug(f" > > Found {len(expired_links)} expired links")
         for link in expired_links:
             logger.debug(
                 f" > > Invalidate cache for {link}: expired at {link.expires_at} < {current_time}"
@@ -866,6 +867,7 @@ class LinkService:
             - Первый элемент: True, если пользователь может читать ссылку
             - Второй элемент: True, если пользователь может изменять ссылку
         """
+        link = None  # Initialize link to None
         # Проверяем, есть ли результат в кэше
         cache_key = f"{self.cache_prefix}{short_code}:acl:{user_id}"
         cached_result = await cache_manager.get(cache_key)
@@ -927,12 +929,15 @@ class LinkService:
 
         if not row:
             can_read, can_modify = False, False
+            logger.debug(f" > > Link not found: {short_code}")
         else:
             # Распаковываем все колонки из результата
             (link, _, _, _, _, can_read, can_modify) = row
-
-        logger.debug(f" > > Link: {link}")
-        logger.debug(f" > > Permissions: can_read={can_read}, can_modify={can_modify}")
+            # Move logging inside the else block
+            logger.debug(f" > > Link: {link}")
+            logger.debug(
+                f" > > Permissions: can_read={can_read}, can_modify={can_modify}"
+            )
 
         # Кешируем результат на 10 минут
         await cache_manager.set(cache_key, (can_read, can_modify), expire=300)

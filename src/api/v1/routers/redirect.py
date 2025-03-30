@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.logger import logger
-from core.database import get_async_session
-from auth.users import optional_current_user
-from models.user import User
-from services.link import LinkService
+from src.core.logger import logger
+from src.core.database import get_async_session
+from src.auth.users import optional_current_user
+from src.models.user import User
+from src.services.link import LinkService
 
 
 router = APIRouter()

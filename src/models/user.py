@@ -2,7 +2,7 @@ from fastapi import Depends
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import relationship
-from core.database import get_async_session, Base
+from src.core.database import get_async_session, Base
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):

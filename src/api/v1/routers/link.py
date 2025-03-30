@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.users import current_active_user, optional_current_user
-from core.database import get_async_session
-from models.user import User
-from schemas.link import Link, LinkCreate, LinkUpdate, LinkStats, LinkResponse
-from services.link import LinkService
-from core.logger import logger
+from src.auth.users import current_active_user, optional_current_user
+from src.core.database import get_async_session
+from src.models.user import User
+from src.schemas.link import Link, LinkCreate, LinkUpdate, LinkStats, LinkResponse
+from src.services.link import LinkService
+from src.core.logger import logger
 
 
 router = APIRouter(prefix="/links", tags=["Links"])

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi_cache.decorator import cache
-from models.user import User
-from auth.users import current_active_user
+from src.models.user import User
+from src.auth.users import current_active_user
 
 router = APIRouter(prefix="/misc", tags=["Miscellaneous"])
 
