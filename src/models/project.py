@@ -31,11 +31,13 @@ project_members = Table(
     Column("user_id", UUID, ForeignKey("users.id"), primary_key=True),  # UUID as string
     Column("is_admin", Boolean, default=False),
     Column("joined_at", DateTime(timezone=True), default=utcnow_with_tz),
+    extend_existing=True,
 )
 
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String, nullable=False)

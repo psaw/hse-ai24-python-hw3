@@ -20,6 +20,7 @@ def utcnow_with_tz():
 
 class Link(Base):
     __tablename__ = "links"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     original_url = Column(String, nullable=False)

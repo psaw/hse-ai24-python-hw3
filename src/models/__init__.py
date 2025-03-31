@@ -3,6 +3,6 @@
 from src.core.database import Base
 
 # Import all models here so that Alembic can discover them
-from .user import User
-from .project import Project, project_members
-from .link import Link
+from src.models.user import User
+from src.models.project import Project, project_members
+from src.models.link import Link

@@ -7,6 +7,7 @@ from src.core.database import get_async_session, Base
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "users"
+    __table_args__ = {"extend_existing": True}
 
     # Отношения
     projects = relationship(
