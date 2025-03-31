@@ -26,22 +26,22 @@ services:
     image: redis:7-alpine
     container_name: redis_app
     restart: always
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    command: --requirepass ${REDIS_PASSWORD}
+    # environment:
+    #   - REDIS_PASSWORD=${REDIS_PASSWORD}
+    # command: --requirepass ${REDIS_PASSWORD}
     ports:
       - 6380:6379  # 6380 - для проверки подключения снаружи
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   app:
-    # build: .  # это для локальной сборки из исходников (вместо image:)
-    image: cr.yandex/crp7k73mhh3ojb75h0gi/fastapi_hw3:latest
+    build: .  # это для локальной сборки из исходников (вместо image:)
+    # image: cr.yandex/crp7k73mhh3ojb75h0gi/fastapi_hw3:latest
     container_name: fastapi_app
     stop_signal: SIGINT
     environment:  # override .env (или env) переменные
