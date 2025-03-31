@@ -1,5 +1,21 @@
 import sys
 import os
+import asyncio
+from typing import AsyncGenerator, Generator
+import pytest
+import pytest_asyncio
+from fastapi import FastAPI
+from httpx import AsyncClient  # Используем AsyncClient т.к. приложение асинхронное
+from alembic import command
+from alembic.config import Config
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import NullPool
+from pydantic_settings import SettingsConfigDict
 
 # Добавляем корневую директорию проекта (где находится папка src) в PYTHONPATH
 # Это позволит pytest находить модули из src
@@ -8,43 +24,16 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
     print(f"Added project root to sys.path: {project_root}")
 
-import asyncio
-import os
-from typing import AsyncGenerator, Generator
+from src.models.user import User
+from src.models.project import Project
+from src.models.link import Link
 
-import pytest
-import pytest_asyncio
-from alembic import command
-from alembic.config import Config
 
-# from dotenv import load_dotenv # Больше не нужно
-from fastapi import FastAPI
-from httpx import AsyncClient  # Используем AsyncClient т.к. приложение асинхронное
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
-from sqlalchemy.pool import NullPool
-
-# Pydantic Settings
-from pydantic_settings import SettingsConfigDict
-
-# Импортируем приложение FastAPI и базовую модель SQLAlchemy
-# Убедитесь, что PYTHONPATH настроен правильно (например, в pytest.ini)
-# Убираем импорты отсюда:
-# from src.core.database import Base, get_async_session
-# from src.main import app as fastapi_app
-# Импорт Base может быть не нужен здесь, Alembic найдет его сам
-
-# --- Настройка тестовой конфигурации ---
-
-# Указываем Pydantic Settings использовать .env.test
-# Это можно сделать через переменную окружения перед запуском pytest:
-# export PYTEST_DOTENV_FILE='.env.test'
-# Или модифицировать экземпляр settings во время тестов.
-# Предпочтительнее модифицировать Settings класс или его экземпляр.
+# Убедитесь, что модели импортируются только один раз
+@pytest.fixture(scope="session")
+def models():
+    """Возвращает словарь с моделями для использования в тестах."""
+    return {"User": User, "Link": Link, "Project": Project}
 
 
 @pytest.fixture(scope="session")
@@ -61,7 +50,15 @@ def session_event_loop(event_loop_policy):
     print("Session-level event loop created.")
     yield loop
     print("Cleaning up session-level event loop...")
-    if loop.is_running():
+    # Явно закрываем все незавершенные задачи
+    pending = asyncio.all_tasks(loop)
+    for task in pending:
+        task.cancel()
+    # Запускаем цикл, чтобы задачи отменились
+    if pending and not loop.is_closed():
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    # Закрываем цикл
+    if not loop.is_closed():
         loop.close()
     print("Session-level event loop cleaned up.")
 
@@ -80,8 +77,7 @@ def set_test_environment():
     loaded = load_dotenv(dotenv_path=".env.test", override=True)
     if not loaded:
         print("Warning: .env.test not found or empty.")
-        # Возможно, стоит упасть с ошибкой, если .env.test обязателен
-        # pytest.fail(".env.test not found, cannot run tests.")
+        pytest.fail(".env.test not found, cannot run tests.")
 
     # Теперь импортируем settings ПОСЛЕ загрузки .env.test
     # Это требует, чтобы config.py не импортировался где-либо еще до этой фикстуры
@@ -153,20 +149,27 @@ async def TestDBSessionFactory(
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session(
-    TestDBSessionFactory: async_sessionmaker[AsyncSession],
+    TestDBSessionFactory: async_sessionmaker[AsyncSession], session_event_loop
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     Предоставляет транзакционную сессию БД для каждого теста.
     Откатывает транзакцию после завершения теста для изоляции.
     """
     async with TestDBSessionFactory() as session:
-        # Начинаем транзакцию (не обязательно, если session настроен на autocommit=False)
-        # await session.begin() # Может быть неявно при первом запросе
         try:
+            # Начинаем транзакцию
+            await session.begin()
             yield session
         finally:
-            # Откатываем все изменения, сделанные во время теста
-            await session.rollback()
+            # Аккуратно откатываем и закрываем сессию
+            try:
+                await session.rollback()
+            except Exception as e:
+                print(f"Error during rollback: {e}")
+            try:
+                await session.close()
+            except Exception as e:
+                print(f"Error during session close: {e}")
 
 
 # --- Фикстуры для тестового клиента FastAPI ---
@@ -218,26 +221,3 @@ async def client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(app=test_app, base_url="http://testserver") as async_client:
         print("Async test client created.")
         yield async_client
-
-
-# --- Фикстуры для управления тестовой средой ---
-
-
-@pytest.fixture(scope="session", autouse=True)
-def apply_migrations_to_test_db(test_async_engine: AsyncEngine):
-    """
-    Применяет миграции Alembic к тестовой БД перед началом тестовой сессии.
-    Запускается автоматически благодаря autouse=True.
-    """
-    print("Applying migrations...")
-    alembic_cfg = Config("alembic.ini")
-    # Alembic должен использовать DATABASE_URL из окружения,
-    # которое было установлено через load_dotenv в `set_test_environment`.
-    # Убедитесь, что ваш alembic/env.py читает DATABASE_URL из os.environ.
-    command.upgrade(alembic_cfg, "head")
-    print("Migrations applied.")
-    yield
-    # Опционально: откат миграций после тестов или очистка таблиц
-    # print("Downgrading migrations...")
-    # command.downgrade(alembic_cfg, "base")
-    # print("Migrations downgraded.")
