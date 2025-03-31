@@ -1,11 +1,25 @@
 import pytest
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, text
+from sqlalchemy import select
 
 from src.models.project import Project
+from src.models.user import User
+from src.models.link import Link
+from tests.helpers import (
+    create_test_user,
+    create_test_project,
+    create_test_link,
+    add_user_to_project,
+)
+from tests.fixtures import (
+    test_user,
+    test_project,
+    test_project_with_members,
+    test_links,
+)
 
 
 @pytest.mark.asyncio
@@ -44,14 +58,12 @@ class TestProjectModel:
 
     async def test_read_project(self, db_session: AsyncSession):
         """Тест чтения проекта."""
-        # Создаем проект
-        project = Project(
-            name="Проект для чтения", description="Описание проекта для чтения"
+        # Создаем проект с помощью вспомогательной функции
+        project = await create_test_project(
+            db=db_session,
+            name="Проект для чтения",
+            description="Описание проекта для чтения",
         )
-
-        db_session.add(project)
-        await db_session.commit()
-        await db_session.refresh(project)
 
         # Получаем проект из базы данных
         retrieved_project = await db_session.get(Project, project.id)
@@ -64,11 +76,10 @@ class TestProjectModel:
 
     async def test_update_project(self, db_session: AsyncSession):
         """Тест обновления проекта."""
-        # Создаем проект
-        project = Project(name="Проект до обновления", description="Старое описание")
-
-        db_session.add(project)
-        await db_session.commit()
+        # Создаем проект с помощью вспомогательной функции
+        project = await create_test_project(
+            db=db_session, name="Проект до обновления", description="Старое описание"
+        )
 
         # Обновляем проект
         project.name = "Проект после обновления"
@@ -83,13 +94,12 @@ class TestProjectModel:
 
     async def test_delete_project(self, db_session: AsyncSession):
         """Тест удаления проекта."""
-        # Создаем проект
-        project = Project(
-            name="Проект для удаления", description="Описание проекта для удаления"
+        # Создаем проект с помощью вспомогательной функции
+        project = await create_test_project(
+            db=db_session,
+            name="Проект для удаления",
+            description="Описание проекта для удаления",
         )
-
-        db_session.add(project)
-        await db_session.commit()
 
         # Сохраняем ID для проверки
         project_id = project.id
@@ -102,46 +112,32 @@ class TestProjectModel:
         deleted_project = await db_session.get(Project, project_id)
         assert deleted_project is None
 
-    async def test_project_links_relationship(self, db_session: AsyncSession):
+    async def test_project_links_relationship(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Тест связи проекта и ссылок."""
-        from src.models.link import Link
-        from src.models.user import User
-
-        # Создаем пользователя
-        user = User(
-            email=f"link_test_user_{uuid4().hex}@example.com",
-            hashed_password="hashedpassword123",
-            is_active=True,
-            is_superuser=False,
-            is_verified=False,
-        )
-        db_session.add(user)
-        await db_session.flush()
-
         # Создаем проект
-        project = Project(
+        project = await create_test_project(
+            db=db_session,
             name="Проект со ссылками",
             description="Описание проекта со ссылками",
-            owner_id=user.id,
+            owner=test_user,
         )
 
         # Создаем ссылки для проекта
-        link1 = Link(
+        link1 = await create_test_link(
+            db=db_session,
             original_url="https://example.com/1",
-            short_code=f"test123_{uuid4().hex[:8]}",
-            owner_id=user.id,
+            owner=test_user,
             project=project,
         )
 
-        link2 = Link(
+        link2 = await create_test_link(
+            db=db_session,
             original_url="https://example.com/2",
-            short_code=f"test456_{uuid4().hex[:8]}",
-            owner_id=user.id,
+            owner=test_user,
             project=project,
         )
-
-        db_session.add_all([project, link1, link2])
-        await db_session.commit()
 
         # Используем selectinload для жадной загрузки связей
         stmt = (
@@ -177,43 +173,20 @@ class TestProjectModel:
 
     async def test_project_members_relationship(self, db_session: AsyncSession):
         """Тест связи проекта и пользователей (участников)."""
-        from src.models.user import User
-        from sqlalchemy.orm import selectinload
-        from sqlalchemy import select, text
-
         # Создаем проект
-        project = Project(
-            name="Проект с участниками", description="Описание проекта с участниками"
+        project = await create_test_project(
+            db_session,
+            name="Проект с участниками",
+            description="Описание проекта с участниками",
         )
 
-        # Создаем пользователей с уникальными email
-        user1 = User(
-            email=f"user1_{uuid4().hex}@example.com",
-            hashed_password="somehashedpassword1",
-            is_active=True,
-            is_superuser=False,
-            is_verified=False,
-        )
+        # Создаем пользователей с помощью вспомогательной функции
+        user1 = await create_test_user(db_session)
+        user2 = await create_test_user(db_session)
 
-        user2 = User(
-            email=f"user2_{uuid4().hex}@example.com",
-            hashed_password="somehashedpassword2",
-            is_active=True,
-            is_superuser=False,
-            is_verified=False,
-        )
-
-        # Добавляем пользователей в сессию
-        db_session.add_all([project, user1, user2])
-        await db_session.commit()
-
-        # Создаем соединение между проектом и пользователями через промежуточную таблицу
-        stmt = text("""
-        INSERT INTO project_members (project_id, user_id, is_admin) 
-        VALUES (:project_id, :user_id, false)
-        """)
-        await db_session.execute(stmt, {"project_id": project.id, "user_id": user1.id})
-        await db_session.execute(stmt, {"project_id": project.id, "user_id": user2.id})
+        # Добавляем пользователей в проект через вспомогательную функцию
+        await add_user_to_project(db_session, project.id, user1.id, is_admin=False)
+        await add_user_to_project(db_session, project.id, user2.id, is_admin=False)
         await db_session.commit()
 
         # Загружаем проект с участниками
@@ -243,3 +216,40 @@ class TestProjectModel:
         for user in users:
             assert len(user.projects) == 1
             assert user.projects[0].id == project.id
+
+    async def test_with_existing_fixtures(
+        self, db_session: AsyncSession, test_project_with_members: Project
+    ):
+        """Тест с использованием готовых фикстур."""
+        # Загружаем проект с участниками
+        stmt = (
+            select(Project)
+            .where(Project.id == test_project_with_members.id)
+            .options(selectinload(Project.members))
+        )
+        result = await db_session.execute(stmt)
+        project = result.scalar_one()
+
+        # Проверяем, что проект имеет участников
+        assert (
+            len(project.members) >= 2
+        )  # В фикстуре test_project_with_members добавляется 2 участника
+
+        # Проверяем свойства проекта
+        assert project.name == "Test Project with Members"
+
+    async def test_project_with_links(
+        self, db_session: AsyncSession, test_project: Project, test_links: list
+    ):
+        """Тест проекта с ссылками из фикстур."""
+        # Загружаем проект со ссылками
+        stmt = (
+            select(Project)
+            .where(Project.id == test_project.id)
+            .options(selectinload(Project.links))
+        )
+        result = await db_session.execute(stmt)
+        project = result.scalar_one()
+
+        # Проверяем, что у проекта есть ссылки
+        assert len(project.links) >= 2

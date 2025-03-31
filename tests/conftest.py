@@ -28,6 +28,16 @@ from src.models.user import User
 from src.models.project import Project
 from src.models.link import Link
 
+# Импортируем наши фикстуры для тестовых данных
+from tests.fixtures import (
+    test_user,
+    test_admin_user,
+    test_project,
+    test_project_with_members,
+    test_link,
+    test_links,
+)
+
 
 # Убедитесь, что модели импортируются только один раз
 @pytest.fixture(scope="session")
@@ -37,30 +47,28 @@ def models():
 
 
 @pytest.fixture(scope="session")
-def event_loop_policy():
-    """Возвращает политику цикла событий для тестов."""
-    return asyncio.get_event_loop_policy()
-
-
-@pytest_asyncio.fixture(scope="session")
-def session_event_loop(event_loop_policy):
-    """Создает выделенный цикл событий для фикстур уровня session."""
-    loop = event_loop_policy.new_event_loop()
+def event_loop():
+    """
+    Создает цикл событий для всей тестовой сессии.
+    Переопределяет встроенную фикстуру pytest_asyncio, которая создает отдельный цикл событий для каждого теста.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     asyncio.set_event_loop(loop)
-    print("Session-level event loop created.")
     yield loop
-    print("Cleaning up session-level event loop...")
+
     # Явно закрываем все незавершенные задачи
     pending = asyncio.all_tasks(loop)
     for task in pending:
         task.cancel()
+
     # Запускаем цикл, чтобы задачи отменились
     if pending and not loop.is_closed():
         loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+
     # Закрываем цикл
     if not loop.is_closed():
         loop.close()
-    print("Session-level event loop cleaned up.")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -94,7 +102,7 @@ def set_test_environment():
 
 
 @pytest_asyncio.fixture(scope="session")
-async def test_async_engine(session_event_loop) -> AsyncGenerator[AsyncEngine, None]:
+async def test_async_engine(event_loop) -> AsyncGenerator[AsyncEngine, None]:
     """
     Создает и предоставляет асинхронный движок SQLAlchemy для тестовой БД.
     Использует NullPool для предотвращения зависания соединений в тестах.
@@ -114,7 +122,7 @@ async def test_async_engine(session_event_loop) -> AsyncGenerator[AsyncEngine, N
 
 
 @pytest.fixture(scope="session", autouse=True)
-def apply_migrations_to_test_db(test_async_engine: AsyncEngine, session_event_loop):
+def apply_migrations_to_test_db(test_async_engine: AsyncEngine, event_loop):
     """
     Применяет миграции Alembic к тестовой БД перед началом тестовой сессии.
     Запускается автоматически благодаря autouse=True.
@@ -136,7 +144,6 @@ def apply_migrations_to_test_db(test_async_engine: AsyncEngine, session_event_lo
 @pytest_asyncio.fixture(scope="session")
 async def TestDBSessionFactory(
     test_async_engine: AsyncEngine,
-    session_event_loop,
 ) -> async_sessionmaker[AsyncSession]:
     """
     Создает фабрику сессий, привязанную к тестовому движку БД.
@@ -147,35 +154,32 @@ async def TestDBSessionFactory(
     )
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def db_session(
-    TestDBSessionFactory: async_sessionmaker[AsyncSession], session_event_loop
+    TestDBSessionFactory: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     Предоставляет транзакционную сессию БД для каждого теста.
-    Откатывает транзакцию после завершения теста для изоляции.
+    Создает новую сессию и транзакцию для каждого теста.
+    После теста всегда выполняет rollback для изоляции тестов.
     """
+    # Создаем новую сессию для каждого теста
     async with TestDBSessionFactory() as session:
+        # Начинаем транзакцию
+        await session.begin()
         try:
-            # Начинаем транзакцию
-            await session.begin()
             yield session
         finally:
-            # Аккуратно откатываем и закрываем сессию
-            try:
-                await session.rollback()
-            except Exception as e:
-                print(f"Error during rollback: {e}")
-            try:
-                await session.close()
-            except Exception as e:
-                print(f"Error during session close: {e}")
+            # Всегда откатываем транзакцию, даже если тест завершился с ошибкой
+            await session.rollback()
+            # Закрываем сессию
+            await session.close()
 
 
 # --- Фикстуры для тестового клиента FastAPI ---
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def test_app(TestDBSessionFactory: async_sessionmaker[AsyncSession]) -> FastAPI:
     """
     Создает экземпляр FastAPI приложения для теста, переопределяя зависимость get_async_session,
@@ -198,22 +202,14 @@ def test_app(TestDBSessionFactory: async_sessionmaker[AsyncSession]) -> FastAPI:
     fastapi_app.dependency_overrides[get_async_session] = override_get_async_session
     print("Dependency get_async_session overridden for test.")
 
-    # Можно также переопределить зависимость settings, если это нужно
-    # def override_settings():
-    #    # Возвращаем тестовые настройки, если они отличаются от глобальных settings
-    #    return settings
-    # fastapi_app.dependency_overrides[get_settings_dependency] = override_settings
-
     yield fastapi_app  # Предоставляем приложение тесту
 
     # Убираем переопределение после завершения теста
     del fastapi_app.dependency_overrides[get_async_session]
-    # if get_settings_dependency in fastapi_app.dependency_overrides:
-    #    del fastapi_app.dependency_overrides[get_settings_dependency]
     print("Dependency override cleaned up.")
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """
     Предоставляет асинхронный HTTP клиент (httpx) для взаимодействия с тестовым приложением FastAPI.

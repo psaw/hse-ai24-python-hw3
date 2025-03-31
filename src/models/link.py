@@ -34,7 +34,7 @@ class Link(Base):
     is_public = Column(Boolean, default=False)
 
     # Отношения
-    owner = relationship("User", foreign_keys=[owner_id])
+    owner = relationship("User", foreign_keys=[owner_id], back_populates="links")
     project = relationship("Project", back_populates="links")
 
     def __repr__(self):

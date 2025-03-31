@@ -13,6 +13,8 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     projects = relationship(
         "Project", secondary="project_members", back_populates="members"
     )
+    # TODO: если неработает, то закомментировать
+    links = relationship("Link", back_populates="owner")
 
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
