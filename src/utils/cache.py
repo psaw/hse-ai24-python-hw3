@@ -2,7 +2,7 @@ from typing import Optional, Any
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from redis.asyncio import Redis
-from src.core.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB
+from src.core.config import settings
 from src.core.logger import logger
 import json
 from pydantic import HttpUrl
@@ -35,12 +35,20 @@ class CacheManager:
     async def init(self):
         """Инициализация подключения к Redis."""
         try:
+            # Get password string if it exists
+            redis_password = (
+                settings.REDIS_PASSWORD.get_secret_value()
+                if settings.REDIS_PASSWORD
+                else None
+            )
+
             self.redis = Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                password=REDIS_PASSWORD,
-                db=REDIS_DB,
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                password=redis_password,
+                db=settings.REDIS_DB,
                 decode_responses=True,
+                ssl=settings.REDIS_SSL,
             )
             self.backend = RedisBackend(self.redis)
             FastAPICache.init(self.backend, prefix="fastapi-cache")

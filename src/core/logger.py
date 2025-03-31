@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from loguru import logger
-from src.core.config import LOG_LEVEL
+from src.core.config import settings
 from contextvars import ContextVar
 
 # Контекстная переменная для Request ID
@@ -34,7 +34,7 @@ logger.remove()
 logger.add(
     sys.stdout,
     format=LOG_FORMAT,
-    level=LOG_LEVEL,
+    level=settings.LOG_LEVEL,
     colorize=True,
 )
 

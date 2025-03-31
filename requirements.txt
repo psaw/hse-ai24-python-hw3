@@ -16,3 +16,4 @@ setuptools
 fastapi-cache2[redis]==0.2.2
 loguru
 apscheduler==3.10.4
+pydantic-settings

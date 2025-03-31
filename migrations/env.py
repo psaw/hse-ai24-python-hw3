@@ -1,6 +1,9 @@
 import os
 import sys
 
+# Add src directory to sys.path to allow importing from src.*
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, src_path)
 
 from sqlalchemy import create_engine  # Use create_engine
 from sqlalchemy import pool
@@ -10,29 +13,14 @@ from logging.config import fileConfig
 from src.models import Base
 from alembic import context
 
-DB_USER = os.getenv("DB_USER", "user")
-DB_PASS = os.getenv("DB_PASS", "password")
-DB_HOST = os.getenv("DB_HOST", "db")  # Critical one
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "app")
+# Import settings from the core config
+from src.core.config import settings
 
 # ############################################################################
-# Construct the database URL manually (i.e. ignore 'alembic.ini')
-# Need this for migrations at runtime (not at build time)
+# Use the sync database DSN from settings
 # ############################################################################
-
-# Using URL object for robustness
-database_url_obj = URL.create(
-    drivername="postgresql",  # Use the standard sync driver for Alembic
-    username=DB_USER,
-    password=DB_PASS,
-    host=DB_HOST,
-    port=int(DB_PORT),
-    database=DB_NAME,
-)
-database_url_str = database_url_obj.render_as_string(hide_password=False)
+database_url_str = settings.database_dsn_sync
 # ----------------------------------------------------------------------------
-
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -74,10 +62,10 @@ def run_migrations_offline() -> None:
     """
     # Offline mode can still use the URL from alembic.ini if needed,
     # or we can use the manually constructed one.
-    # Let's use the manual one for consistency.
+    # Let's use the settings DSN.
     # url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=database_url_str,  # Use manually constructed URL
+        url=database_url_str,  # Use settings DSN
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

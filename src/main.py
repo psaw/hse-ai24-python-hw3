@@ -2,7 +2,9 @@ import uvicorn
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
-from src.core.config import DB_INIT
+
+# from src.core.config import DB_INIT # Old import
+from src.core.config import settings  # New import
 from src.core.logger import logger
 from src.core.database import create_db_and_tables
 from src.core.middleware import LoggingMiddleware, setup_cors_middleware
@@ -27,7 +29,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Запускаем планировщик
     scheduler.start()
 
-    if DB_INIT:
+    if settings.DB_INIT:
         logger.info("Initializing database...")
         try:
             # Очищаем кеш Redis перед пересозданием БД

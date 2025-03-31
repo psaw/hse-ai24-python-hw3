@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_async_session
 from src.services.link import LinkService
 from src.core.logger import logger
-from src.core.config import SCHEDULER_CLEANUP_INTERVAL
+from src.core.config import settings
 
 
 class Scheduler:
@@ -48,13 +48,13 @@ class Scheduler:
         # Запускаем очистку истекших ссылок с интервалом из конфигурации
         self.scheduler.add_job(
             self._cleanup_expired_links,
-            IntervalTrigger(minutes=SCHEDULER_CLEANUP_INTERVAL),
+            IntervalTrigger(minutes=settings.SCHEDULER_CLEANUP_INTERVAL),
             id="cleanup_expired_links",
             name="Cleanup expired links",
             replace_existing=True,
         )
         logger.info(
-            f"Scheduler configured to run cleanup every {SCHEDULER_CLEANUP_INTERVAL} minutes"
+            f"Scheduler configured to run cleanup every {settings.SCHEDULER_CLEANUP_INTERVAL} minutes"
         )
 
     async def _cleanup_expired_links(self):
